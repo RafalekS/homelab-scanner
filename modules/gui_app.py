@@ -193,17 +193,25 @@ class HostConfigDialog(QDialog):
         self._type.setCurrentIndex(max(0, idx))
         self._password = QLineEdit(self._host.get("password") or "")
         self._password.setEchoMode(QLineEdit.EchoMode.Password)
-        self._key_path = QLineEdit(self._host.get("key_path", ""))
-        self._key_path.setPlaceholderText("Leave blank to use global SSH key")
         self._enabled = QCheckBox("Enabled")
         self._enabled.setChecked(self._host.get("enabled", True))
+
+        self._key_path = QLineEdit(self._host.get("key_path", ""))
+        self._key_path.setPlaceholderText("Leave blank to use global SSH key")
+        key_row = QWidget()
+        key_row_l = QHBoxLayout(key_row)
+        key_row_l.setContentsMargins(0, 0, 0, 0)
+        key_row_l.addWidget(self._key_path)
+        key_browse = QPushButton("Browse...")
+        key_browse.clicked.connect(self._browse_key)
+        key_row_l.addWidget(key_browse)
 
         form.addRow("Name:", self._name)
         form.addRow("Hostname:", self._hostname)
         form.addRow("User:", self._user)
         form.addRow("Type:", self._type)
         form.addRow("Password:", self._password)
-        form.addRow("SSH Key Path:", self._key_path)
+        form.addRow("SSH Key Path:", key_row)
         form.addRow("", self._enabled)
         layout.addLayout(form)
 
@@ -230,6 +238,13 @@ class HostConfigDialog(QDialog):
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
+
+    def _browse_key(self):
+        current = self._key_path.text()
+        start = os.path.dirname(os.path.expandvars(os.path.expanduser(current))) if current else os.path.expanduser("~/.ssh")
+        path, _ = QFileDialog.getOpenFileName(self, "Select SSH Private Key", start, "All Files (*.*)")
+        if path:
+            self._key_path.setText(path)
 
     def get_host(self) -> dict:
         collect = [k for k, cb in self._chk.items() if cb.isChecked()]
@@ -289,17 +304,35 @@ class SettingsDialog(QDialog):
         w = QWidget()
         form = QFormLayout(w)
         ssh = self._cfg.get("ssh", {})
+
         self._ssh_key = QLineEdit(ssh.get("key_path", ""))
+        self._ssh_key.setPlaceholderText("~/.ssh/id_ed25519")
+        key_row = QWidget()
+        key_row_l = QHBoxLayout(key_row)
+        key_row_l.setContentsMargins(0, 0, 0, 0)
+        key_row_l.addWidget(self._ssh_key)
+        key_browse = QPushButton("Browse...")
+        key_browse.clicked.connect(self._browse_ssh_key)
+        key_row_l.addWidget(key_browse)
+
         self._ssh_connect = QSpinBox()
         self._ssh_connect.setRange(1, 120)
         self._ssh_connect.setValue(ssh.get("connect_timeout", 10))
         self._ssh_cmd = QSpinBox()
         self._ssh_cmd.setRange(1, 300)
         self._ssh_cmd.setValue(ssh.get("command_timeout", 30))
-        form.addRow("Key path:", self._ssh_key)
+
+        form.addRow("Default key path:", key_row)
         form.addRow("Connect timeout (s):", self._ssh_connect)
         form.addRow("Command timeout (s):", self._ssh_cmd)
         return w
+
+    def _browse_ssh_key(self):
+        current = self._ssh_key.text()
+        start = os.path.dirname(os.path.expandvars(os.path.expanduser(current))) if current else os.path.expanduser("~/.ssh")
+        path, _ = QFileDialog.getOpenFileName(self, "Select SSH Private Key", start, "All Files (*.*)")
+        if path:
+            self._ssh_key.setText(path)
 
     def _output_tab(self) -> QWidget:
         w = QWidget()
@@ -319,7 +352,7 @@ class SettingsDialog(QDialog):
                 row_h = QHBoxLayout(row_w)
                 row_h.setContentsMargins(0, 0, 0, 0)
                 row_h.addWidget(le)
-                btn = QPushButton("Browse")
+                btn = QPushButton("Browse...")
                 btn.clicked.connect(lambda _, f=le: self._browse(f))
                 row_h.addWidget(btn)
                 form.addRow(field.replace("_", " ").title() + ":", row_w)
@@ -328,7 +361,9 @@ class SettingsDialog(QDialog):
         return w
 
     def _browse(self, line_edit: QLineEdit):
-        path, _ = QFileDialog.getSaveFileName(self, "Select file")
+        current = line_edit.text()
+        start = os.path.dirname(os.path.expandvars(os.path.expanduser(current))) if current else ""
+        path, _ = QFileDialog.getSaveFileName(self, "Select file", start, "All Files (*.*)")
         if path:
             line_edit.setText(path)
 
