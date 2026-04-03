@@ -1,0 +1,95 @@
+{
+  "ssh": {
+    "connect_timeout": 10,
+    "command_timeout": 30,
+    "key_path": "~/.ssh/id_ed25519"
+  },
+  "platforms": {
+    "pi": {
+      "data_file": "/mnt/projects/Obsidian/Notki/Context/Data/homelab-data.yaml",
+      "context_file": "/mnt/projects/Obsidian/Notki/Context/homelab-context.md",
+      "log_file": "logs/scanner.log"
+    },
+    "windows": {
+      "data_file": "X:/Obsidian/Notki/Context/Data/homelab-data.yaml",
+      "context_file": "X:/Obsidian/Notki/Context/homelab-context.md",
+      "log_file": "logs/scanner.log"
+    }
+  },
+  "context": {
+    "hardware": {
+      "ThinkPad": "ThinkPad P16s (r_sta@P16-WIN11, 192.168.0.106) — Windows 11 Pro, primary workstation",
+      "Pi4": "Raspberry Pi 4 (raspberrypi.local, 192.168.0.94) — pihole, ngrok, docker",
+      "Pi5-AI": "Raspberry Pi 5 AI (rasp5-AI.local, 192.168.0.169) — Hailo-10H NPU",
+      "Pi5-NVMe": "Raspberry Pi 5 NVMe (rasp5-nvme.local, 192.168.0.97) — docker, Claude Code",
+      "QNAP": "QNAP TS-464 (NAS-RLS, 192.168.0.166) — 16GB RAM, Intel N5095, n8n, docker"
+    },
+    "extra_hardware": [
+      "Samsung S25+, Samsung S10 Ultra Tab",
+      "Xbox Series X (192.168.0.101)",
+      "Dell Inspiron (Kali Linux)"
+    ],
+    "static_services": [
+      "Gotify notifications: http://192.168.0.166:12680",
+      "Apprise: http://192.168.0.166:9999",
+      "Pi-hole DNS: Pi 4 (192.168.0.94)",
+      "n8n automation: QNAP docker",
+      "Obsidian vault: QNAP /share/CACHEDEV1_DATA/Projects/Obsidian/Notki",
+      "Obsidian REST API: Pi 5 NVMe, http://localhost:27123",
+      "QNAP mount on Pi: /mnt/projects via CIFS fstab",
+      "QNAP credentials: /home/pi/.config/picc/credentials/qnap.creds"
+    ]
+  },
+  "hosts": [
+    {
+      "name": "Pi4",
+      "hostname": "192.168.0.94",
+      "user": "pi",
+      "type": "linux",
+      "enabled": true,
+      "collect": ["disk", "docker", "ips", "services"],
+      "services_check": ["pihole-FTL", "ngrok"]
+    },
+    {
+      "name": "Pi5-AI",
+      "hostname": "192.168.0.169",
+      "user": "pi",
+      "type": "linux",
+      "enabled": true,
+      "collect": ["disk", "docker", "ips", "services"],
+      "services_check": []
+    },
+    {
+      "name": "Pi5-NVMe",
+      "hostname": "localhost",
+      "user": "pi",
+      "type": "local",
+      "enabled": true,
+      "collect": ["disk", "docker", "ips", "services"],
+      "services_check": ["obsidian-rest"],
+      "windows": {
+        "hostname": "192.168.0.97",
+        "type": "linux"
+      }
+    },
+    {
+      "name": "QNAP",
+      "hostname": "192.168.0.166",
+      "user": "rls1203",
+      "type": "qnap",
+      "enabled": true,
+      "password": "H@slodoQnap1",
+      "collect": ["disk", "docker", "ips"],
+      "services_check": []
+    },
+    {
+      "name": "ThinkPad",
+      "hostname": "192.168.0.106",
+      "user": "r_sta",
+      "type": "windows",
+      "enabled": true,
+      "collect": ["disk", "docker", "ips", "services"],
+      "services_check": ["sshd", "docker"]
+    }
+  ]
+}
