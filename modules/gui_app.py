@@ -393,6 +393,7 @@ class SettingsDialog(QDialog):
 
     def _refresh_hosts_tbl(self):
         t = self._hosts_tbl
+        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for host in self._cfg.get("hosts", []):
@@ -404,6 +405,8 @@ class SettingsDialog(QDialog):
             t.setItem(row, 3, QTableWidgetItem(host.get("type", "")))
             t.setItem(row, 4, QTableWidgetItem("Yes" if host.get("enabled", True) else "No"))
         t.setSortingEnabled(True)
+        t.horizontalHeader().blockSignals(False)
+        _tbl_restore(t, self._state.get("settings_hosts_table"))
 
     def _selected_host_name(self) -> str | None:
         row = self._hosts_tbl.currentRow()
@@ -690,10 +693,13 @@ class MainWindow(QMainWindow):
 
     def _clear_tables(self):
         for t in [self._tbl_disk, self._tbl_docker, self._tbl_services]:
+            t.horizontalHeader().blockSignals(True)
             t.setRowCount(0)
+            t.horizontalHeader().blockSignals(False)
 
     def _fill_disk(self, disk: list):
         t = self._tbl_disk
+        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for d in disk:
@@ -706,10 +712,12 @@ class MainWindow(QMainWindow):
             t.setItem(r, 4, _NumericItem(d.get("avail", "")))
             t.setItem(r, 5, _NumericItem(d.get("use_pct", "")))
         t.setSortingEnabled(True)
+        t.horizontalHeader().blockSignals(False)
         _tbl_restore(t, self._state.get("disk_table"))
 
     def _fill_docker(self, containers: list):
         t = self._tbl_docker
+        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for c in containers:
@@ -719,10 +727,12 @@ class MainWindow(QMainWindow):
             t.setItem(r, 1, QTableWidgetItem(c.get("image", "")))
             t.setItem(r, 2, QTableWidgetItem(c.get("status", "")))
         t.setSortingEnabled(True)
+        t.horizontalHeader().blockSignals(False)
         _tbl_restore(t, self._state.get("docker_table"))
 
     def _fill_services(self, services: dict):
         t = self._tbl_services
+        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for svc, status in services.items():
@@ -731,6 +741,7 @@ class MainWindow(QMainWindow):
             t.setItem(r, 0, QTableWidgetItem(svc))
             t.setItem(r, 1, QTableWidgetItem(status))
         t.setSortingEnabled(True)
+        t.horizontalHeader().blockSignals(False)
         _tbl_restore(t, self._state.get("services_table"))
 
     # ── Scan control ──────────────────────────────────────────────────────────
