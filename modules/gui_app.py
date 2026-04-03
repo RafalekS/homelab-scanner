@@ -105,15 +105,18 @@ class ScanWorker(QThread):
     all_done = pyqtSignal(list)
     log_msg = pyqtSignal(str)
 
-    def __init__(self, cfg: dict):
+    def __init__(self, cfg: dict, host_names: list | None = None):
         super().__init__()
         self._cfg = cfg
+        self._host_names = set(host_names) if host_names else None
         self._running = True
 
     def run(self):
         from modules.collectors import HostCollector
         collector = HostCollector(self._cfg)
         hosts = [h for h in self._cfg["hosts"] if h.get("enabled", True)]
+        if self._host_names:
+            hosts = [h for h in hosts if h["name"] in self._host_names]
         results = []
 
         def collect_one(host):
@@ -491,6 +494,7 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._setup_logging()
         self._restore_state()
+        self._load_last_scan()
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -502,6 +506,11 @@ class MainWindow(QMainWindow):
         self._act_scan = QAction("Scan All", self)
         self._act_scan.triggered.connect(self._scan_all)
         tb.addAction(self._act_scan)
+
+        self._act_scan_host = QAction("Scan Host", self)
+        self._act_scan_host.triggered.connect(self._scan_host)
+        self._act_scan_host.setEnabled(False)
+        tb.addAction(self._act_scan_host)
 
         self._act_stop = QAction("Stop", self)
         self._act_stop.triggered.connect(self._stop_scan)
@@ -653,8 +662,11 @@ class MainWindow(QMainWindow):
 
     def _on_host_selected(self, current, _prev):
         if not current:
+            self._act_scan_host.setEnabled(False)
             return
         name = current.data(Qt.ItemDataRole.UserRole)
+        scanning = bool(self._worker and self._worker.isRunning())
+        self._act_scan_host.setEnabled(not scanning)
         self._show_host(name)
         self._state["selected_host"] = name
         self._schedule_save()
@@ -730,11 +742,29 @@ class MainWindow(QMainWindow):
         if self._worker and self._worker.isRunning():
             return
         self._act_scan.setEnabled(False)
+        self._act_scan_host.setEnabled(False)
         self._act_stop.setEnabled(True)
         self._lbl_status.setText("  Scanning...")
         self._worker = ScanWorker(self._cfg)
         self._worker.host_done.connect(self._on_host_done)
         self._worker.all_done.connect(self._on_all_done)
+        self._worker.log_msg.connect(self._log.appendPlainText)
+        self._worker.start()
+
+    def _scan_host(self):
+        if self._worker and self._worker.isRunning():
+            return
+        cur = self._host_list.currentItem()
+        if not cur:
+            return
+        name = cur.data(Qt.ItemDataRole.UserRole)
+        self._act_scan.setEnabled(False)
+        self._act_scan_host.setEnabled(False)
+        self._act_stop.setEnabled(True)
+        self._lbl_status.setText(f"  Scanning {name}...")
+        self._worker = ScanWorker(self._cfg, host_names=[name])
+        self._worker.host_done.connect(self._on_host_done)
+        self._worker.all_done.connect(self._on_single_done)
         self._worker.log_msg.connect(self._log.appendPlainText)
         self._worker.start()
 
@@ -754,10 +784,42 @@ class MainWindow(QMainWindow):
     def _on_all_done(self, results: list):
         self._act_scan.setEnabled(True)
         self._act_stop.setEnabled(False)
+        self._act_scan_host.setEnabled(self._host_list.currentItem() is not None)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._lbl_status.setText(f"  Last scan: {now}")
         self.statusBar().showMessage(f"Scan complete — {len(results)} hosts", 5000)
         self._save_yaml(results)
+
+    def _on_single_done(self, _results: list):
+        self._act_scan.setEnabled(True)
+        self._act_stop.setEnabled(False)
+        self._act_scan_host.setEnabled(self._host_list.currentItem() is not None)
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._lbl_status.setText(f"  Last scan: {now}")
+        # Merge updated host into full results and save YAML
+        all_results = list(self._results.values())
+        self._save_yaml(all_results)
+
+    def _load_last_scan(self):
+        try:
+            data_path = os.path.expandvars(os.path.expanduser(self._cfg["output"]["data_file"]))
+            if not os.path.exists(data_path):
+                return
+            from modules.data_store import load_data
+            data = load_data(data_path)
+            for host in data.get("hosts", []):
+                name = host.get("name")
+                if name:
+                    self._results[name] = host
+            updated = data.get("updated", "")
+            if updated:
+                self._lbl_status.setText(f"  Last scan: {updated}")
+            self._refresh_host_list()
+            cur = self._host_list.currentItem()
+            if cur:
+                self._show_host(cur.data(Qt.ItemDataRole.UserRole))
+        except Exception as e:
+            logger.warning(f"Could not load last scan: {e}")
 
     def _save_yaml(self, results: list):
         try:
