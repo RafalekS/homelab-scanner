@@ -18,7 +18,9 @@ class SSHConnection:
     def __init__(self, host: dict, cfg: dict):
         self.host = host
         self.command_timeout = cfg["ssh"]["command_timeout"]
-        self._key_path = os.path.expandvars(os.path.expanduser(cfg["ssh"]["key_path"]))
+        # Per-host key_path overrides the global default
+        raw_key = host.get("key_path") or cfg["ssh"].get("key_path", "")
+        self._key_path = os.path.expandvars(os.path.expanduser(raw_key)) if raw_key else ""
         self._connect_timeout = cfg["ssh"]["connect_timeout"]
         self._client: paramiko.SSHClient | None = None
 

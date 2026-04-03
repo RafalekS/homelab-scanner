@@ -79,7 +79,10 @@ def _tbl_restore(table: QTableWidget, state_str: str) -> None:
     if not state_str:
         return
     try:
-        table.horizontalHeader().restoreState(QByteArray(base64.b64decode(state_str)))
+        header = table.horizontalHeader()
+        header.blockSignals(True)
+        header.restoreState(QByteArray(base64.b64decode(state_str)))
+        header.blockSignals(False)
     except Exception:
         pass
 
@@ -190,6 +193,8 @@ class HostConfigDialog(QDialog):
         self._type.setCurrentIndex(max(0, idx))
         self._password = QLineEdit(self._host.get("password") or "")
         self._password.setEchoMode(QLineEdit.EchoMode.Password)
+        self._key_path = QLineEdit(self._host.get("key_path", ""))
+        self._key_path.setPlaceholderText("Leave blank to use global SSH key")
         self._enabled = QCheckBox("Enabled")
         self._enabled.setChecked(self._host.get("enabled", True))
 
@@ -198,6 +203,7 @@ class HostConfigDialog(QDialog):
         form.addRow("User:", self._user)
         form.addRow("Type:", self._type)
         form.addRow("Password:", self._password)
+        form.addRow("SSH Key Path:", self._key_path)
         form.addRow("", self._enabled)
         layout.addLayout(form)
 
@@ -240,6 +246,9 @@ class HostConfigDialog(QDialog):
         pw = self._password.text()
         if pw:
             h["password"] = pw
+        kp = self._key_path.text().strip()
+        if kp:
+            h["key_path"] = kp
         # preserve platform override if it existed
         if "windows" in self._host:
             h["windows"] = self._host["windows"]
@@ -255,6 +264,10 @@ class SettingsDialog(QDialog):
         self.resize(760, 520)
         self._cfg = copy.deepcopy(raw_cfg)
         self._cfg_path = cfg_path
+        self._state = _load_state(cfg_path)
+        self._save_timer = QTimer()
+        self._save_timer.setSingleShot(True)
+        self._save_timer.timeout.connect(self._do_save_state)
         self._build()
 
     def _build(self):
@@ -326,7 +339,12 @@ class SettingsDialog(QDialog):
         self._hosts_tbl = _make_table(["Name", "Hostname", "User", "Type", "Enabled"])
         self._hosts_tbl.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self._hosts_tbl.doubleClicked.connect(self._edit_host)
+        h = self._hosts_tbl.horizontalHeader()
+        h.sectionResized.connect(lambda: self._save_timer.start(500))
+        h.sectionMoved.connect(lambda: self._save_timer.start(500))
+        h.sortIndicatorChanged.connect(lambda: self._save_timer.start(500))
         self._refresh_hosts_tbl()
+        _tbl_restore(self._hosts_tbl, self._state.get("settings_hosts_table"))
         layout.addWidget(self._hosts_tbl)
 
         btn_row = QHBoxLayout()
@@ -406,6 +424,18 @@ class SettingsDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Could not save config:\n{e}")
             return
         self.accept()
+
+    def _do_save_state(self):
+        self._state["settings_hosts_table"] = _tbl_save(self._hosts_tbl)
+        _save_state(self._cfg_path, self._state)
+
+    def hideEvent(self, event):
+        self._do_save_state()
+        super().hideEvent(event)
+
+    def closeEvent(self, event):
+        self._do_save_state()
+        super().closeEvent(event)
 
     def get_raw_cfg(self) -> dict:
         return self._cfg
