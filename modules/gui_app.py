@@ -71,20 +71,14 @@ def _save_state(cfg_path: str, state: dict) -> None:
         logger.warning(f"Could not save GUI state: {e}")
 
 
-def _tbl_save(table: QTableWidget) -> str:
-    return base64.b64encode(bytes(table.horizontalHeader().saveState())).decode()
+def _cols_save(table: QTableWidget) -> list:
+    return [table.columnWidth(i) for i in range(table.columnCount())]
 
 
-def _tbl_restore(table: QTableWidget, state_str: str) -> None:
-    if not state_str:
-        return
-    try:
-        header = table.horizontalHeader()
-        header.blockSignals(True)
-        header.restoreState(QByteArray(base64.b64decode(state_str)))
-        header.blockSignals(False)
-    except Exception:
-        pass
+def _cols_restore(table: QTableWidget, widths: list) -> None:
+    for i, w in enumerate(widths):
+        if i < table.columnCount() and w > 0:
+            table.setColumnWidth(i, w)
 
 
 # ── Table factory ─────────────────────────────────────────────────────────────
@@ -379,7 +373,7 @@ class SettingsDialog(QDialog):
         h.sectionMoved.connect(lambda: self._save_timer.start(500))
         h.sortIndicatorChanged.connect(lambda: self._save_timer.start(500))
         self._refresh_hosts_tbl()
-        _tbl_restore(self._hosts_tbl, self._state.get("settings_hosts_table"))
+        _cols_restore(self._hosts_tbl, self._state.get("settings_hosts_cols", []))
         layout.addWidget(self._hosts_tbl)
 
         btn_row = QHBoxLayout()
@@ -393,7 +387,6 @@ class SettingsDialog(QDialog):
 
     def _refresh_hosts_tbl(self):
         t = self._hosts_tbl
-        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for host in self._cfg.get("hosts", []):
@@ -405,8 +398,6 @@ class SettingsDialog(QDialog):
             t.setItem(row, 3, QTableWidgetItem(host.get("type", "")))
             t.setItem(row, 4, QTableWidgetItem("Yes" if host.get("enabled", True) else "No"))
         t.setSortingEnabled(True)
-        t.horizontalHeader().blockSignals(False)
-        _tbl_restore(t, self._state.get("settings_hosts_table"))
 
     def _selected_host_name(self) -> str | None:
         row = self._hosts_tbl.currentRow()
@@ -464,7 +455,7 @@ class SettingsDialog(QDialog):
         self.accept()
 
     def _do_save_state(self):
-        self._state["settings_hosts_table"] = _tbl_save(self._hosts_tbl)
+        self._state["settings_hosts_cols"] = _cols_save(self._hosts_tbl)
         _save_state(self._cfg_path, self._state)
 
     def hideEvent(self, event):
@@ -693,13 +684,10 @@ class MainWindow(QMainWindow):
 
     def _clear_tables(self):
         for t in [self._tbl_disk, self._tbl_docker, self._tbl_services]:
-            t.horizontalHeader().blockSignals(True)
             t.setRowCount(0)
-            t.horizontalHeader().blockSignals(False)
 
     def _fill_disk(self, disk: list):
         t = self._tbl_disk
-        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for d in disk:
@@ -712,12 +700,9 @@ class MainWindow(QMainWindow):
             t.setItem(r, 4, _NumericItem(d.get("avail", "")))
             t.setItem(r, 5, _NumericItem(d.get("use_pct", "")))
         t.setSortingEnabled(True)
-        t.horizontalHeader().blockSignals(False)
-        _tbl_restore(t, self._state.get("disk_table"))
 
     def _fill_docker(self, containers: list):
         t = self._tbl_docker
-        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for c in containers:
@@ -727,12 +712,9 @@ class MainWindow(QMainWindow):
             t.setItem(r, 1, QTableWidgetItem(c.get("image", "")))
             t.setItem(r, 2, QTableWidgetItem(c.get("status", "")))
         t.setSortingEnabled(True)
-        t.horizontalHeader().blockSignals(False)
-        _tbl_restore(t, self._state.get("docker_table"))
 
     def _fill_services(self, services: dict):
         t = self._tbl_services
-        t.horizontalHeader().blockSignals(True)
         t.setSortingEnabled(False)
         t.setRowCount(0)
         for svc, status in services.items():
@@ -741,8 +723,6 @@ class MainWindow(QMainWindow):
             t.setItem(r, 0, QTableWidgetItem(svc))
             t.setItem(r, 1, QTableWidgetItem(status))
         t.setSortingEnabled(True)
-        t.horizontalHeader().blockSignals(False)
-        _tbl_restore(t, self._state.get("services_table"))
 
     # ── Scan control ──────────────────────────────────────────────────────────
 
@@ -819,9 +799,9 @@ class MainWindow(QMainWindow):
         self._save_timer.start(500)
 
     def _do_save_state(self):
-        self._state["disk_table"] = _tbl_save(self._tbl_disk)
-        self._state["docker_table"] = _tbl_save(self._tbl_docker)
-        self._state["services_table"] = _tbl_save(self._tbl_services)
+        self._state["disk_cols"] = _cols_save(self._tbl_disk)
+        self._state["docker_cols"] = _cols_save(self._tbl_docker)
+        self._state["services_cols"] = _cols_save(self._tbl_services)
         self._state["refresh_interval"] = self._spin_interval.value()
         self._state["splitter"] = self._splitter.sizes()
         _save_state(self._cfg_path, self._state)
@@ -839,6 +819,10 @@ class MainWindow(QMainWindow):
         sizes = self._state.get("splitter")
         if sizes:
             self._splitter.setSizes(sizes)
+
+        _cols_restore(self._tbl_disk, self._state.get("disk_cols", []))
+        _cols_restore(self._tbl_docker, self._state.get("docker_cols", []))
+        _cols_restore(self._tbl_services, self._state.get("services_cols", []))
 
         if self._state.get("auto_refresh"):
             self._chk_auto.setChecked(True)

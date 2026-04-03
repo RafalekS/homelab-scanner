@@ -1,35 +1,38 @@
 # Homelab Scanner — TODO
 
-## Status: Initial build — needs testing
+## Status: CLI working on Pi. GUI needs Windows test.
 
 ---
 
 ## Pending
 
-### Testing
-- [ ] Test local collection (Pi5-NVMe)
-- [ ] Test SSH to Pi4 (192.168.0.94)
-- [ ] Test SSH to Pi5-AI (192.168.0.169)
-- [ ] Test SSH to QNAP (192.168.0.166) — may need password in config
-- [ ] Test SSH to ThinkPad Windows (192.168.0.106) — key auth now working
-- [ ] Verify homelab-data.yaml output format
-- [ ] Verify homelab-context.md output is correct
-
-### Config
-- [ ] Add QNAP password to config/config.json (currently blank)
-- [ ] Confirm Pi4/Pi5-AI SSH key works from this machine
+### Windows GUI Testing
+- [ ] Transfer project to ThinkPad and install PyQt6 (`pip install PyQt6 paramiko pyyaml`)
+- [ ] Run `python main.py` on Windows — verify GUI launches
+- [ ] Test Scan All button — all 5 hosts
+- [ ] Test per-host left panel status (green/red)
+- [ ] Test Disk/Docker/Services tabs populate correctly
+- [ ] Test Settings dialog (SSH, Output, Hosts tabs)
+- [ ] Test column resize/reorder/sort + state persistence after restart
+- [ ] Test auto-refresh toggle + interval
+- [ ] Verify output paths write to X:/Obsidian/... on Windows
 
 ### Known gaps
-- [ ] QNAP may not have `systemctl` — `services_check` not applicable, docker cmd may differ
-- [ ] Windows docker command needs testing (may not be installed)
+- [ ] `gui_app.py` imports `resolve_config` from `main` — fragile if run via `python -m` or different working dir; consider moving `resolve_config` to a shared module
 
 ---
 
 ## Completed
-- [x] SSH working from Pi5-NVMe to ThinkPad (key auth fixed — .ssh dir perms + SYSTEM ACL)
-- [x] Project structure created
-- [x] modules/ssh_client.py — paramiko with key→password fallback
-- [x] modules/collectors.py — linux/windows/local/qnap collection
-- [x] modules/data_store.py — YAML read/write
-- [x] modules/context_builder.py — builds homelab-context.md from YAML
-- [x] scanner.py — main entry, CLI flags, threaded scan
+- [x] SSH working — key auth to all hosts (Pi4, Pi5-AI, QNAP, ThinkPad)
+- [x] QNAP hang fixed — channel.settimeout() + socket.timeout handling
+- [x] modules/ssh_client.py
+- [x] modules/collectors.py — per-host collect field, linux/windows/local/qnap
+- [x] modules/data_store.py — YAML read/write with timestamp
+- [x] modules/context_builder.py — all content from config, no hardcoded strings
+- [x] modules/cli_runner.py — CLI entry with argparse, --hosts/--context-only/--data-only
+- [x] modules/gui_app.py — PyQt6 GUI (ScanWorker, tables, settings dialog, state persist)
+- [x] main.py — unified entry, OS detection, config platform resolution
+- [x] scanner.py — thin legacy wrapper → cli_runner
+- [x] config/config.json — single file, platforms.pi + platforms.windows, all paths/context in config
+- [x] Full scan test on Pi — all 5 hosts, data saved to Obsidian vault
+- [x] GitHub repo: https://github.com/RafalekS/homelab-scanner
