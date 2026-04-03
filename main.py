@@ -24,10 +24,12 @@ def resolve_config(raw: dict) -> dict:
     platform_key = "windows" if platform.system() == "Windows" else "pi"
     cfg["output"] = cfg["platforms"][platform_key]
     for host in cfg.get("hosts", []):
-        overrides = host.pop("windows", None)
-        host.pop("pi", None)
-        if platform_key == "windows" and overrides:
-            host.update(overrides)
+        win_overrides = host.pop("windows", None)
+        pi_overrides = host.pop("pi", None)
+        if platform_key == "windows" and win_overrides:
+            host.update(win_overrides)
+        elif platform_key == "pi" and pi_overrides:
+            host.update(pi_overrides)
     return cfg
 
 

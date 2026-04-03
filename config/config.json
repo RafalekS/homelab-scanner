@@ -84,12 +84,13 @@
     },
     {
       "name": "ThinkPad",
-      "hostname": "192.168.0.106",
+      "hostname": "localhost",
       "user": "r_sta",
-      "type": "windows",
+      "type": "local",
       "enabled": true,
       "collect": ["disk", "docker", "ips", "services"],
-      "services_check": ["sshd", "docker"]
+      "services_check": ["sshd", "docker"],
+      "pi": {"hostname": "192.168.0.106", "type": "windows"}
     }
   ]
 }

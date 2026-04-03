@@ -18,10 +18,12 @@ def main():
     cfg = copy.deepcopy(raw_cfg)
     cfg["output"] = cfg["platforms"][platform_key]
     for host in cfg.get("hosts", []):
-        overrides = host.pop("windows", None)
-        host.pop("pi", None)
-        if platform_key == "windows" and overrides:
-            host.update(overrides)
+        win_overrides = host.pop("windows", None)
+        pi_overrides = host.pop("pi", None)
+        if platform_key == "windows" and win_overrides:
+            host.update(win_overrides)
+        elif platform_key == "pi" and pi_overrides:
+            host.update(pi_overrides)
 
     from modules.cli_runner import run_cli
     run_cli(cfg, _CFG_PATH, sys.argv[1:])

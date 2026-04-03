@@ -163,9 +163,11 @@ class HostCollector:
             return {"name": host["name"], "error": f"unknown type: {htype}"}
 
     def _collect_local(self, host: dict) -> dict:
+        import platform as _platform
         name = host["name"]
         data = {"name": name, "type": "local"}
         collect = set(host.get("collect", _ALL_COLLECT))
+        is_windows = _platform.system() == "Windows"
 
         def run_local(cmd):
             try:
@@ -176,17 +178,33 @@ class HostCollector:
                 logger.error(f"{name}: local command failed — {e}")
                 return ""
 
-        if "disk" in collect:
-            data["disk"] = _parse_linux_disk(run_local(LINUX_DISK_CMD))
-        if "ips" in collect:
-            data["ips"] = [ip for ip in run_local(LINUX_IPS_CMD).split() if ":" not in ip]
-        if "docker" in collect:
-            data["docker"] = _parse_docker(run_local(LINUX_DOCKER_CMD))
-        if "services" in collect:
-            data["services"] = {}
-            for svc in host.get("services_check", []):
-                out = run_local(f"systemctl is-active {svc} 2>/dev/null")
-                data["services"][svc] = out or "not-found"
+        if is_windows:
+            if "disk" in collect:
+                data["disk"] = _parse_win_disk(run_local(WIN_DISK_CMD))
+            if "ips" in collect:
+                data["ips"] = [
+                    ip for ip in run_local(WIN_IPS_CMD).split()
+                    if not ip.startswith("169.254")
+                ]
+            if "docker" in collect:
+                data["docker"] = _parse_docker(run_local(WIN_DOCKER_CMD))
+            if "services" in collect:
+                data["services"] = {}
+                for svc in host.get("services_check", []):
+                    out = run_local(win_service_cmd(svc))
+                    data["services"][svc] = out or "unknown"
+        else:
+            if "disk" in collect:
+                data["disk"] = _parse_linux_disk(run_local(LINUX_DISK_CMD))
+            if "ips" in collect:
+                data["ips"] = [ip for ip in run_local(LINUX_IPS_CMD).split() if ":" not in ip]
+            if "docker" in collect:
+                data["docker"] = _parse_docker(run_local(LINUX_DOCKER_CMD))
+            if "services" in collect:
+                data["services"] = {}
+                for svc in host.get("services_check", []):
+                    out = run_local(f"systemctl is-active {svc} 2>/dev/null")
+                    data["services"][svc] = out or "not-found"
         return data
 
     def _collect_linux(self, host: dict) -> dict:
