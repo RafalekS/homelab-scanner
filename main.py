@@ -5,36 +5,20 @@ Detects OS and launches GUI (Windows) or CLI (Pi/Linux).
 """
 import os
 import sys
-import json
-import copy
 import platform
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _CFG_PATH = os.path.join(_BASE_DIR, "config", "config.json")
 
+# Ensure project root is on sys.path so modules are importable regardless of cwd
+if _BASE_DIR not in sys.path:
+    sys.path.insert(0, _BASE_DIR)
 
-def load_raw_config() -> dict:
-    with open(_CFG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def resolve_config(raw: dict) -> dict:
-    """Flatten platform section into cfg['output'] and apply per-host platform overrides."""
-    cfg = copy.deepcopy(raw)
-    platform_key = "windows" if platform.system() == "Windows" else "pi"
-    cfg["output"] = cfg["platforms"][platform_key]
-    for host in cfg.get("hosts", []):
-        win_overrides = host.pop("windows", None)
-        pi_overrides = host.pop("pi", None)
-        if platform_key == "windows" and win_overrides:
-            host.update(win_overrides)
-        elif platform_key == "pi" and pi_overrides:
-            host.update(pi_overrides)
-    return cfg
+from modules.config_loader import load_raw_config, resolve_config  # noqa: E402
 
 
 if __name__ == "__main__":
-    raw_cfg = load_raw_config()
+    raw_cfg = load_raw_config(_CFG_PATH)
     cfg = resolve_config(raw_cfg)
 
     if platform.system() == "Windows":

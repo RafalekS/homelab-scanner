@@ -847,7 +847,7 @@ class MainWindow(QMainWindow):
     # ── Settings ──────────────────────────────────────────────────────────────
 
     def _open_settings(self):
-        from main import resolve_config
+        from modules.config_loader import resolve_config
         dlg = SettingsDialog(self._raw_cfg, self._cfg_path, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._raw_cfg = dlg.get_raw_cfg()
