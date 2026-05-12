@@ -47,7 +47,7 @@
       "user": "pi",
       "type": "linux",
       "enabled": true,
-      "collect": ["disk", "docker", "ips", "services"],
+      "collect": ["disk", "docker", "ips", "services", "processes", "ports"],
       "services_check": ["pihole-FTL", "ngrok"]
     },
     {
@@ -56,7 +56,7 @@
       "user": "pi",
       "type": "linux",
       "enabled": true,
-      "collect": ["disk", "docker", "ips", "services"],
+      "collect": ["disk", "docker", "ips", "services", "processes", "ports"],
       "services_check": []
     },
     {
@@ -65,7 +65,7 @@
       "user": "pi",
       "type": "local",
       "enabled": true,
-      "collect": ["disk", "docker", "ips", "services"],
+      "collect": ["disk", "docker", "ips", "services", "processes", "ports"],
       "services_check": ["obsidian-rest"],
       "windows": {
         "hostname": "192.168.0.97",
@@ -79,7 +79,7 @@
       "type": "qnap",
       "enabled": true,
       "password": "H@slodoQnap1",
-      "collect": ["disk", "docker", "ips"],
+      "collect": ["disk", "docker", "ips", "processes", "ports"],
       "services_check": []
     },
     {
@@ -88,7 +88,7 @@
       "user": "r_sta",
       "type": "local",
       "enabled": true,
-      "collect": ["disk", "docker", "ips", "services"],
+      "collect": ["disk", "docker", "ips", "services", "processes", "ports"],
       "services_check": ["sshd", "docker"],
       "pi": {"hostname": "192.168.0.106", "type": "windows"}
     }
